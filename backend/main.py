@@ -1,11 +1,14 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
-import ollama
+from fastapi.responses import StreamingResponse, JSONResponse
 import edge_tts
+from whisper_service import transcribe_audio
 from db import save_message, get_chats, get_chat_messages
+import ollama
+import os
 
-app = FastAPI()
+
+app = FastAPI(title="AI Avatar Backend")
 
 app.add_middleware(
     CORSMiddleware,
@@ -59,3 +62,19 @@ async def chats():
 @app.get("/messages/{chat_id}")
 async def messages(chat_id: str):
     return get_chat_messages(chat_id)
+
+@app.post("/stt")
+async def stt(file: UploadFile = File(...)):
+    """Speech-to-Text (Whisper)"""
+    file_path = f"temp_{file.filename}"
+    with open(file_path, "wb") as f:
+        f.write(await file.read())
+
+    try:
+        text = transcribe_audio(file_path)
+        return {"text": text}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+    finally:
+        if os.path.exists(file_path):
+            os.remove(file_path)
