@@ -1,0 +1,58 @@
+.input-area {
+  padding: 24px 32px;
+  border-top: 1px solid #2d3748;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.message-input {
+  flex: 1;
+  padding: 12px 16px;
+  background-color: #1e2936;
+  border: 1px solid #2d3748;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 14px;
+  outline: none;
+}
+
+.message-input::placeholder {
+  color: #718096;
+}
+
+.attach-btn,
+.mic-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  border: none;
+  color: #a0aec0;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.attach-btn:hover,
+.mic-btn:hover {
+  background-color: #2d3748;
+}
+
+.send-btn {
+  padding: 10px 24px;
+  background-color: #3182ce;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.send-btn:hover {
+  background-color: #2c5282;
+}
