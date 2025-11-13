@@ -17,14 +17,30 @@ conn = psycopg2.connect(
 
 cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-def save_message(user_message, bot_reply):
+def save_message(chat_id, user_message, bot_reply):
     cursor.execute(
-        "INSERT INTO messages (user_message, bot_reply) VALUES (%s, %s) RETURNING id;",
-        (user_message, bot_reply)
+        "INSERT INTO messages (id_chats, user_message, bot_reply) VALUES (%s, %s, %s) RETURNING id;",
+        (chat_id, user_message, bot_reply)
     )
     conn.commit()
     return cursor.fetchone()["id"]
 
-def get_messages():
-    cursor.execute("SELECT * FROM messages ORDER BY created_at DESC;")
+def get_chat_messages(chat_id):
+    cursor.execute(
+        "SELECT * FROM messages WHERE id_chats = %s ORDER BY created_at ASC;",
+        (chat_id,)
+    )
+    return cursor.fetchall()
+
+def get_chats():
+    cursor.execute("""
+        SELECT 
+            id_chats,
+            MIN(user_message) as first_message,
+            MIN(created_at) as created_at,
+            COUNT(*) as message_count
+        FROM messages 
+        GROUP BY id_chats 
+        ORDER BY MIN(created_at) DESC;
+    """)
     return cursor.fetchall()

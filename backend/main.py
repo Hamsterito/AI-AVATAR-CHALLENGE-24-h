@@ -3,9 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import ollama
 import edge_tts
-import asyncio
-from db import save_message, get_messages
-import uuid
+from db import save_message, get_chats, get_chat_messages
 
 app = FastAPI()
 
@@ -23,9 +21,13 @@ app.add_middleware(
 async def chat(request: Request):
     data = await request.json()
     user_message = data.get("message", "")
+    chat_id = data.get("chat_id", "")
 
     if not user_message:
         return {"error": "Нет текста для отправки"}
+    
+    if not chat_id:
+        return {"error": "Не указан ID чата"}
 
     try:
         response = ollama.chat(
@@ -36,7 +38,7 @@ async def chat(request: Request):
     except Exception as e:
         return {"error": f"Ошибка Ollama: {str(e)}"}
 
-    msg_id = save_message(user_message, bot_reply)
+    msg_id = save_message(chat_id, user_message, bot_reply)
 
     async def stream_audio():
         communicate = edge_tts.Communicate(bot_reply, "ru-RU-DariyaNeural")
@@ -50,6 +52,10 @@ async def chat(request: Request):
         headers={"X-Message-Id": str(msg_id)}
     )
 
-@app.get("/messages")
-async def messages():
-    return get_messages()
+@app.get("/chats")
+async def chats():
+    return get_chats()
+
+@app.get("/messages/{chat_id}")
+async def messages(chat_id: str):
+    return get_chat_messages(chat_id)
