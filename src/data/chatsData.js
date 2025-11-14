@@ -31,5 +31,10 @@ export const initialChats = [
       { id: 2, text: 'I have questions about expenses', sender: 'user', time: '08:01 AM' },
       { id: 3, text: 'Sure, let me pull up the expense data for you.', sender: 'ai', time: '08:02 AM' }
     ]
-  }
+  },
+  {
+    id: 5,
+    title: 'Q3 Financials',
+    messages: [    ]
+  },
 ];

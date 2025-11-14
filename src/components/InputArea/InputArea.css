@@ -20,6 +20,10 @@
 .message-input::placeholder {
   color: #718096;
 }
+.message-input {
+  transition: background-color 0.2s, color 0.2s;
+}
+
 
 .attach-btn,
 .mic-btn {
@@ -35,6 +39,33 @@
   border-radius: 6px;
   transition: background-color 0.2s;
 }
+.mic-btn:hover:not(.recording) {
+  background-color: #2d3748;
+}
+
+.mic-btn.recording {
+  background-color: #e53e3e; /* чуть мягче красного */
+  color: white;
+  position: relative;
+}
+
+.mic-btn.recording::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  background-color: white;
+  border-radius: 50%;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 50%, 100% { opacity: 1; }
+  25%, 75% { opacity: 0; }
+}
+
 
 .attach-btn:hover,
 .mic-btn:hover {
@@ -54,5 +85,5 @@
 }
 
 .send-btn:hover {
-  background-color: #2c5282;
+  background-color: #2b6cb0; /* чуть светлее, чтобы было плавнее */
 }

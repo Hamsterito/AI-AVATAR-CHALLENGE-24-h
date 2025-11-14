@@ -8,8 +8,9 @@ const Message = ({ message }) => {
       </div>
       <div className="message-content">
         <div className="message-header">
+
           <span className="message-sender">{isUser ? 'You' : 'AI Assistant'}</span>
-          <span className="message-time">{message.time}</span>
+          
         </div>
         <div className="message-text">{message.text}</div>
       </div>

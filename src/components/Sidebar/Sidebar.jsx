@@ -8,9 +8,9 @@ const Sidebar = ({ chats, activeChat, onChatSelect }) => {
       <div className="chat-list">
         {chats.map(chat => (
           <ChatItem
-            key={chat.id}
+            key={chat.Id}
             chat={chat}
-            isActive={activeChat?.id === chat.id}
+            isActive={activeChat?.Id === chat.Id}
             onClick={() => onChatSelect(chat)}
           />
         ))}
