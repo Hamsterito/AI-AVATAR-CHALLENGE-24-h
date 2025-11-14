@@ -38,44 +38,35 @@ const App = () => {
       return [];
     }
   };
-  
-  // Загружаем чаты при первом запуске
+
   useEffect(() => {
     loadChats();
   }, []);
 
   const handleChatSelect = async (chat) => {
     if (activeChat?.Id === chat.Id) return;
-    setActiveChat({ ...chat, messages: [] }); // Сразу показываем чат, пока грузятся сообщения
+    setActiveChat({ ...chat, messages: [] });
     setIsLoading(true);
     const messages = await loadMessages(chat.Id);
     setActiveChat({ ...chat, messages });
     setIsLoading(false);
   };
 
-  // При нажатии "New Chat", мы просто скрываем правую колонку
-  const handleNewChat = () => {
-    setActiveChat(null);
-  };
+  const handleNewChat = () => setActiveChat(null);
 
-  // Внутри App.js
-
-const handleSendMessage = async (message) => {
+  const handleSendMessage = async (message) => {
     let currentChatId = activeChat?.Id;
     const isNewChat = !currentChatId;
 
-    if (isNewChat) {
-      currentChatId = 'chat_' + Date.now();
-    }
+    if (isNewChat) currentChatId = 'chat_' + Date.now();
 
-    // 1. Оптимистичное обновление: сразу показываем сообщение пользователя
     const userMessage = {
       id: `user-${Date.now()}`,
       sender: 'user',
       text: message,
       time: new Date().toLocaleTimeString()
     };
-    
+
     if (isNewChat) {
       setActiveChat({
         Id: currentChatId,
@@ -87,44 +78,47 @@ const handleSendMessage = async (message) => {
     }
 
     try {
-      // 2. Отправляем запрос на бэкенд, ожидая получить аудио в ответ
-      const response = await axios.post(`${API_URL}/chat`,
-        { message, chat_id: currentChatId },
-        { responseType: 'blob' }
-      );
+      // Отправляем сообщение на универсальный эндпоинт /chat
+      const response = await axios.post(`${API_URL}/chat`, {
+        message,
+        chat_id: currentChatId,
+        return_text: true,
+        return_audio: true
+      });
 
-      // 3. Воспроизводим полученное аудио
-      const audio = new Audio(URL.createObjectURL(response.data));
-      audio.play();
-      
-      // 4. После ответа сервера, запрашиваем обновленный список сообщений
-      //    (к этому моменту бэкенд уже сохранил ответ бота в БД)
-      await loadChats(); 
+      // Достаём текст и аудио из JSON
+      const botText = response.data.bot_reply;
+      const audioBase64 = response.data.audio_base64;
+
+      // 1️⃣ Отправляем текст в WebSocket для lipsync
+      if (window.lipsyncWebSocket && window.lipsyncWebSocket.readyState === WebSocket.OPEN) {
+        window.lipsyncWebSocket.send(JSON.stringify({ text: botText }));
+      }
+
+      // 2️⃣ Воспроизводим аудио
+      const audioBlob = new Blob([Uint8Array.from(atob(audioBase64), c => c.charCodeAt(0))], { type: 'audio/mpeg' });
+      const audioObj = new Audio(URL.createObjectURL(audioBlob));
+      audioObj.play();
+
+      // 3️⃣ Обновляем чат
       const finalMessages = await loadMessages(currentChatId);
-      
-      // 5. Обновляем состояние, чтобы отобразить ответ бота в текстовом виде
-      setActiveChat(prev => ({...prev, Id: currentChatId, messages: finalMessages}));
+      setActiveChat(prev => ({ ...prev, Id: currentChatId, messages: finalMessages }));
 
     } catch (err) {
       setError('Ошибка при отправке сообщения.');
       console.error(err);
-      // Здесь можно добавить логику отката оптимистичного обновления, если нужно
     }
   };
 
   return (
     <div className="app">
-      <Sidebar 
-        chats={chats} 
+      <Sidebar
+        chats={chats}
         activeChat={activeChat}
         onChatSelect={handleChatSelect}
         onNewChat={handleNewChat}
       />
-      
-      {/* Центральная колонка с кругом и полем ввода. ВСЕГДА на месте. */}
       <AiArea onSendMessage={handleSendMessage} />
-      
-      {/* Правая колонка с сообщениями. ПОЯВЛЯЕТСЯ только если чат выбран. */}
       {activeChat && <ChatArea chat={activeChat} isLoading={isLoading} />}
     </div>
   );

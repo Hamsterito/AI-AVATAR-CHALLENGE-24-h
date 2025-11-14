@@ -1,13 +1,14 @@
 import InputArea from '../InputArea/InputArea';
+import Live2DAvatar from "./ai_avatar/Live2DAvatar";
 import './AiArea.css';
 
-// Принимаем onSendMessage и передаем его в InputArea
 const AiArea = ({ onSendMessage }) => {
   return (
     <div className="ai-area">
       <div className="empty-chat">
-        {/* Это ваш большой декоративный круг */}
-        <div className="empty-circle"></div>
+        <div className="empty-circle">
+          <Live2DAvatar width={400} height={400} />
+        </div>
       </div>
       <InputArea onSendMessage={onSendMessage} />
     </div>
