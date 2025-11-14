@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 import edge_tts
 from whisper_service import transcribe_audio
-from db import save_message, get_chats, get_chat_messages
+from db import save_message, get_chats_from_db, get_chat_messages_from_db
 import ollama
 import os
 
@@ -54,15 +54,26 @@ async def chat(request: Request):
         media_type="audio/mpeg",
         headers={"X-Message-Id": str(msg_id)}
     )
-
 @app.get("/chats")
-async def chats():
-    return get_chats()
+def chats():
+    try:
+        chats_list = get_chats_from_db()
+        return {"Chats": chats_list}
+    except Exception as e:
+        return {"error": str(e)}
+
 
 @app.get("/messages/{chat_id}")
-async def messages(chat_id: str):
-    return get_chat_messages(chat_id)
+def messages(chat_id: str):
+    try:
+        messages_list = get_chat_messages_from_db(chat_id)
+        print("asa",messages_list)
+        return {"Chat_messages": messages_list}
+    except Exception as e:
+        return {"error": str(e)}
+    
 
+    
 @app.post("/stt")
 async def stt(file: UploadFile = File(...)):
     """Speech-to-Text (Whisper)"""
