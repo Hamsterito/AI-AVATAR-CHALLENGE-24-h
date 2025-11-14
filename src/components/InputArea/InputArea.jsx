@@ -3,13 +3,14 @@ import { Mic, CircleStop, Send } from "lucide-react";
 import VoiceRecorder from "./VoiceRecorder";
 import "./InputArea.css";
 
-const InputArea = () => {
+// Принимаем onSendMessage как пропс
+const InputArea = ({ onSendMessage }) => {
   const [recording, setRecording] = useState(false);
   const [message, setMessage] = useState("");
 
   const recorder = VoiceRecorder({
     onTextReceived: (text) => {
-      setMessage(text); // вставляем распознанный текст в input
+      setMessage(text);
     },
   });
 
@@ -24,8 +25,16 @@ const InputArea = () => {
 
   const handleSendClick = () => {
     if (!message.trim()) return;
-    console.log("Send message:", message);
-    setMessage(""); // очищаем поле после отправки
+    onSendMessage(message); // Вызываем функцию из App.js
+    setMessage(""); // Очищаем поле после отправки
+  };
+
+  // Добавляем отправку по Enter
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendClick();
+    }
   };
 
   return (
@@ -36,6 +45,7 @@ const InputArea = () => {
         className="message-input"
         value={message}
         onChange={(e) => setMessage(e.target.value)}
+        onKeyDown={handleKeyDown} // Добавили обработчик нажатия клавиш
       />
 
       <button

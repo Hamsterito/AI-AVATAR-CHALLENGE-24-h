@@ -5,15 +5,17 @@ import ChatArea from './components/ChatArea/ChatArea';
 import AiArea from './components/AiArea/AiArea';
 import './App.css';
 
+const API_URL = 'http://localhost:8000';
+
 const App = () => {
-  // --- Состояния ---
-  const [chats, setChats] = useState([]);          // Список всех чатов
-  const [activeChat, setActiveChat] = useState(null); // Текущий выбранный чат
+  const [chats, setChats] = useState([]);
+  const [activeChat, setActiveChat] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
- const loadChats = async () => {
+
+  const loadChats = async () => {
     try {
-      const response = await axios.get(`http://localhost:8000/chats`);
+      const response = await axios.get(`${API_URL}/chats`);
       const chatsData = response.data.Chats || [];
       setChats(chatsData);
       return chatsData;
@@ -23,160 +25,92 @@ const App = () => {
       return [];
     }
   };
-  // --- Загрузка списка чатов при монтировании ---
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      setIsLoading(true);
-      setError(null);
 
-      try {
-        // Получаем список чатов
-        const chatsResponse = await axios.get('http://localhost:8000/chats');
-        const chatsData = chatsResponse.data.Chats;
-
-        if (Array.isArray(chatsData) && chatsData.length > 0) {
-          setChats(chatsData);
-
-          // Выбираем первый чат как активный по умолчанию
-          const defaultChat = chatsData[0];
-
-          // Загружаем сообщения для этого чата
-          const messagesResponse = await axios.get(`http://localhost:8000/messages/${defaultChat.Id}`);
-          const messages = messagesResponse.data.Chat_messages || [];
-
-          // Преобразуем сообщения в формат, который понимает ChatArea/Message
-          const formattedMessages = messages.map((msg, index) => [
-            {
-              id: `user-${index}`,
-              sender: 'user',
-              text: msg.question,
-              time: msg.time
-            },
-            {
-              id: `ai-${index}`,
-              sender: 'ai',
-              text: msg.answer,
-              time: msg.time
-            }
-          ]).flat();
-
-          setActiveChat({
-            ...defaultChat,
-            messages: formattedMessages
-          });
-        } else {
-          setChats([]);
-        }
-      } catch (err) {
-        setError('Не удалось загрузить данные. Попробуйте обновить страницу.');
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchInitialData();
-  }, []);
-
-  // --- Обработчик выбора чата ---
-  const handleChatSelect = async (chat) => {
-    if (activeChat?.Id === chat.Id) return;
-
-    setIsLoading(true);
-    setError(null);
-    setActiveChat(null);
-
+  const loadMessages = async (chatId) => {
     try {
-      const response = await axios.get(`http://localhost:8000/messages/${chat.Id}`);
-      const messages = response.data.Chat_messages || [];
-
-      const formattedMessages = messages.map((msg, index) => [
-        {
-          id: `user-${index}`,
-          sender: 'user',
-          text: msg.question,
-          time: msg.time
-        },
-        {
-          id: `ai-${index}`,
-          sender: 'ai',
-          text: msg.answer,
-          time: msg.time
-        }
+      const response = await axios.get(`${API_URL}/messages/${chatId}`);
+      return (response.data.Chat_messages || []).map((msg, index) => [
+        { id: `user-${index}`, sender: 'user', text: msg.question, time: msg.time },
+        { id: `ai-${index}`, sender: 'ai', text: msg.answer, time: msg.time }
       ]).flat();
-
-      setActiveChat({
-        ...chat,
-        messages: formattedMessages
-      });
     } catch (err) {
-      setError('Не удалось загрузить сообщения этого чата.');
-      console.error(err);
-    } finally {
-      setIsLoading(false);
+      console.error("Ошибка при загрузке сообщений:", err);
+      return [];
     }
   };
-  // Создание нового чата
-  const handleNewChat = () => {
-    setActiveChat(null); // Очищаем область чата, чтобы показать AiArea
+  
+  // Загружаем чаты при первом запуске
+  useEffect(() => {
+    loadChats();
+  }, []);
+
+  const handleChatSelect = async (chat) => {
+    if (activeChat?.Id === chat.Id) return;
+    setActiveChat({ ...chat, messages: [] }); // Сразу показываем чат, пока грузятся сообщения
+    setIsLoading(true);
+    const messages = await loadMessages(chat.Id);
+    setActiveChat({ ...chat, messages });
+    setIsLoading(false);
   };
 
-  // Отправка сообщения
-  const handleSendMessage = async (message) => {
-    let currentChatId = activeChat?.Id;
+  // При нажатии "New Chat", мы просто скрываем правую колонку
+  const handleNewChat = () => {
+    setActiveChat(null);
+  };
 
-    // Если чат еще не создан (первое сообщение в новом чате)
-    if (!currentChatId) {
+  // Внутри App.js
+
+const handleSendMessage = async (message) => {
+    let currentChatId = activeChat?.Id;
+    const isNewChat = !currentChatId;
+
+    if (isNewChat) {
       currentChatId = 'chat_' + Date.now();
     }
 
-    // Оптимистичное обновление: сразу показываем сообщение пользователя
+    // 1. Оптимистичное обновление: сразу показываем сообщение пользователя
     const userMessage = {
       id: `user-${Date.now()}`,
       sender: 'user',
       text: message,
       time: new Date().toLocaleTimeString()
     };
-    // Если это новый чат, создаем временный активный чат
-    const tempActiveChat = activeChat || { Id: currentChatId, title: message.substring(0, 30), messages: [] };
     
-    setActiveChat({
-      ...tempActiveChat,
-      messages: [...tempActiveChat.messages, userMessage]
-    });
+    if (isNewChat) {
+      setActiveChat({
+        Id: currentChatId,
+        title: message.substring(0, 30) + '...',
+        messages: [userMessage]
+      });
+    } else {
+      setActiveChat(prev => ({ ...prev, messages: [...prev.messages, userMessage] }));
+    }
 
     try {
-      // Отправляем сообщение на сервер
-      const response = await axios.post(`http://localhost:8000/chat`,
-        { message: message, chat_id: currentChatId },
-        { responseType: 'blob' } // Ожидаем аудио в ответе
+      // 2. Отправляем запрос на бэкенд, ожидая получить аудио в ответ
+      const response = await axios.post(`${API_URL}/chat`,
+        { message, chat_id: currentChatId },
+        { responseType: 'blob' }
       );
 
-      // Воспроизводим аудио
+      // 3. Воспроизводим полученное аудио
       const audio = new Audio(URL.createObjectURL(response.data));
       audio.play();
-
-      // После отправки обновляем список чатов и сообщения
-      const updatedChats = await loadChats();
       
-      // Находим ID чата (сервер мог создать новый)
-      const sentChat = updatedChats.find(c => c.first_message === message) || updatedChats.find(c => c.Id === currentChatId) || updatedChats[0];
-
-      if (sentChat) {
-         // Загружаем актуальные сообщения, включая ответ бота
-        const formattedMessages = await loadMessages(sentChat.Id);
-        setActiveChat({
-          ...sentChat,
-          messages: formattedMessages,
-        });
-      }
+      // 4. После ответа сервера, запрашиваем обновленный список сообщений
+      //    (к этому моменту бэкенд уже сохранил ответ бота в БД)
+      await loadChats(); 
+      const finalMessages = await loadMessages(currentChatId);
+      
+      // 5. Обновляем состояние, чтобы отобразить ответ бота в текстовом виде
+      setActiveChat(prev => ({...prev, Id: currentChatId, messages: finalMessages}));
 
     } catch (err) {
       setError('Ошибка при отправке сообщения.');
       console.error(err);
+      // Здесь можно добавить логику отката оптимистичного обновления, если нужно
     }
   };
-
 
   return (
     <div className="app">
@@ -184,12 +118,14 @@ const App = () => {
         chats={chats} 
         activeChat={activeChat}
         onChatSelect={handleChatSelect}
+        onNewChat={handleNewChat}
       />
-
-      <AiArea />
-
-
-      {activeChat && <ChatArea chat={activeChat} />}
+      
+      {/* Центральная колонка с кругом и полем ввода. ВСЕГДА на месте. */}
+      <AiArea onSendMessage={handleSendMessage} />
+      
+      {/* Правая колонка с сообщениями. ПОЯВЛЯЕТСЯ только если чат выбран. */}
+      {activeChat && <ChatArea chat={activeChat} isLoading={isLoading} />}
     </div>
   );
 };
